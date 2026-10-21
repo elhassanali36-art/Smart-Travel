@@ -1,0 +1,273 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum Role { TRAVELER LOCAL_HOST ADMIN }
+enum UserStatus { ACTIVE SUSPENDED DISABLED PENDING }
+enum VerificationStatus { UNVERIFIED PENDING VERIFIED REJECTED }
+enum BookingStatus { REQUESTED ACCEPTED CONFIRMED COMPLETED REVIEWED REJECTED CANCELLED EXPIRED DISPUTED }
+enum TripStatus { DRAFT PLANNED ACTIVE COMPLETED CANCELLED }
+enum NotificationType { BOOKING MESSAGE REVIEW SYSTEM }
+
+enum ReportStatus { OPEN REVIEWING RESOLVED DISMISSED }
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  name String
+  email String? @unique
+  phone String? @unique
+  passwordHash String
+  role Role @default(TRAVELER)
+  status UserStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  travelerProfile TravelerProfile?
+  hostProfile HostProfile?
+  refreshTokens RefreshToken[]
+  trips Trip[]
+  bookingsAsTraveler Booking[] @relation("travelerBookings")
+  bookingsAsHost Booking[] @relation("hostBookings")
+  sentMessages Message[] @relation("sentMessages")
+  receivedMessages Message[] @relation("receivedMessages")
+  notifications Notification[]
+  reviewsWritten Review[] @relation("writtenReviews")
+  reviewsReceived Review[] @relation("receivedReviews")
+  reports Report[] @relation("reporter")
+  reportsAgainst Report[] @relation("reportedUser")
+  auditLogs AuditLog[] @relation("auditActor")
+  @@index([role,status])
+}
+
+model RefreshToken {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  tokenHash String @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  replacedById String? @db.Uuid
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model TravelerProfile {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  bio String?
+  photoUrl String?
+  country String?
+  languages String[]
+  interests String[]
+  travelStyles String[]
+  budgetLevel Int?
+  preferredDestinations String[]
+  accessibilityNeeds String[]
+  completion Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+}
+
+model HostProfile {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  bio String?
+  photoUrl String?
+  city String?
+  country String?
+  languages String[]
+  expertise String[]
+  categories String[]
+  availabilityNote String?
+  verification VerificationStatus @default(UNVERIFIED)
+  completion Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  experiences Experience[]
+}
+
+model Destination {
+  id String @id @default(uuid()) @db.Uuid
+  slug String @unique
+  nameEn String
+  nameAr String
+  countryEn String
+  countryAr String
+  descriptionEn String
+  descriptionAr String
+  imageUrl String?
+  tags String[]
+  safetyNote String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  experiences Experience[]
+  trips Trip[]
+  @@index([countryEn])
+}
+
+model Experience {
+  id String @id @default(uuid()) @db.Uuid
+  hostProfileId String @db.Uuid
+  destinationId String @db.Uuid
+  titleEn String
+  titleAr String
+  descriptionEn String
+  descriptionAr String
+  category String
+  priceCents Int
+  durationMinutes Int
+  capacity Int @default(1)
+  languages String[]
+  tags String[]
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  host HostProfile @relation(fields:[hostProfileId], references:[id], onDelete:Cascade)
+  destination Destination @relation(fields:[destinationId], references:[id], onDelete:Restrict)
+  bookings Booking[]
+  itineraryItems ItineraryItem[]
+  @@index([destinationId, active])
+  @@index([category, active])
+  @@index([hostProfileId])
+}
+
+model Trip {
+  id String @id @default(uuid()) @db.Uuid
+  travelerId String @db.Uuid
+  destinationId String? @db.Uuid
+  title String
+  startDate DateTime?
+  endDate DateTime?
+  status TripStatus @default(DRAFT)
+  preferences Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  traveler User @relation(fields:[travelerId], references:[id], onDelete:Cascade)
+  destination Destination? @relation(fields:[destinationId], references:[id], onDelete:SetNull)
+  itineraryItems ItineraryItem[]
+  bookings Booking[]
+  @@index([travelerId, status])
+}
+
+model ItineraryItem {
+  id String @id @default(uuid()) @db.Uuid
+  tripId String @db.Uuid
+  dayNumber Int
+  sortOrder Int @default(0)
+  title String
+  description String?
+  location String?
+  startTime DateTime?
+  endTime DateTime?
+  experienceId String? @db.Uuid
+  trip Trip @relation(fields:[tripId], references:[id], onDelete:Cascade)
+  experience Experience? @relation(fields:[experienceId], references:[id], onDelete:SetNull)
+  @@index([tripId, dayNumber, sortOrder])
+}
+
+model Booking {
+  id String @id @default(uuid()) @db.Uuid
+  travelerId String @db.Uuid
+  hostId String @db.Uuid
+  experienceId String @db.Uuid
+  tripId String? @db.Uuid
+  status BookingStatus @default(REQUESTED)
+  // Scheduled session. endsAt = startsAt + experience.durationMinutes (computed by the server).
+  startsAt DateTime
+  endsAt DateTime
+  guests Int @default(1)
+  // Deadline for the pending party to act (REQUESTED: host, ACCEPTED: traveler). NULL once CONFIRMED or terminal.
+  expiresAt DateTime?
+  disputeReason String?
+  disputedAt DateTime?
+  // Plain user id (no relation): who opened the dispute.
+  disputedById String? @db.Uuid
+  resolutionNote String?
+  resolvedAt DateTime?
+  requestedAt DateTime @default(now())
+  acceptedAt DateTime?
+  confirmedAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  note String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  traveler User @relation("travelerBookings", fields:[travelerId], references:[id], onDelete:Restrict)
+  host User @relation("hostBookings", fields:[hostId], references:[id], onDelete:Restrict)
+  experience Experience @relation(fields:[experienceId], references:[id], onDelete:Restrict)
+  trip Trip? @relation(fields:[tripId], references:[id], onDelete:SetNull)
+  review Review?
+  @@index([travelerId, status])
+  @@index([hostId, status])
+  @@index([experienceId, status, startsAt])
+  @@index([status, expiresAt])
+}
+
+model Review {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid
+  authorId String @db.Uuid
+  subjectId String @db.Uuid
+  rating Int
+  comment String?
+  createdAt DateTime @default(now())
+  booking Booking @relation(fields:[bookingId], references:[id], onDelete:Cascade)
+  author User @relation("writtenReviews", fields:[authorId], references:[id], onDelete:Restrict)
+  subject User @relation("receivedReviews", fields:[subjectId], references:[id], onDelete:Restrict)
+  @@index([subjectId, rating])
+}
+
+model Message {
+  id String @id @default(uuid()) @db.Uuid
+  senderId String @db.Uuid
+  recipientId String @db.Uuid
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  sender User @relation("sentMessages", fields:[senderId], references:[id], onDelete:Cascade)
+  recipient User @relation("receivedMessages", fields:[recipientId], references:[id], onDelete:Cascade)
+  @@index([recipientId, readAt, createdAt])
+  @@index([senderId, createdAt])
+}
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  type NotificationType
+  title String
+  body String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  @@index([userId, readAt, createdAt])
+}
+
+model Report {
+  id String @id @default(uuid()) @db.Uuid
+  reporterId String @db.Uuid
+  subjectUserId String? @db.Uuid
+  reason String
+  details String?
+  status ReportStatus @default(OPEN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reporter User @relation("reporter", fields:[reporterId], references:[id], onDelete:Cascade)
+  reportedUser User? @relation("reportedUser", fields:[subjectUserId], references:[id], onDelete:SetNull)
+  @@index([status, createdAt])
+  @@index([subjectUserId, createdAt])
+}
+
+// Append-only trail of privileged (admin) actions. actorId is kept as NULL if the admin account is ever removed.
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid
+  action String
+  targetType String
+  targetId String
+  metadata Json?
+  createdAt DateTime @default(now())
+  actor User? @relation("auditActor", fields:[actorId], references:[id], onDelete:SetNull)
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+}

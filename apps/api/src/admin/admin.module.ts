@@ -1,0 +1,1 @@
+import{CommonModule}from'../common/common.module';import{Module}from'@nestjs/common';import{AdminController}from'./admin.controller';@Module({imports:[CommonModule],controllers:[AdminController]})export class AdminModule{}

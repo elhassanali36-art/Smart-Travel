@@ -1,0 +1,1 @@
+import{CommonModule}from'../common/common.module';import{Module}from'@nestjs/common';import{ExperiencesController}from'./experiences.controller';import{ExperiencesService}from'./experiences.service';@Module({imports:[CommonModule],controllers:[ExperiencesController],providers:[ExperiencesService]})export class ExperiencesModule{}

@@ -1,0 +1,2 @@
+export interface TravelAIProvider{recommend(input:{prompt:string,context:Record<string,unknown>}):Promise<{text:string;items:string[]}>}
+export class DeterministicTravelAI implements TravelAIProvider{async recommend(input:{prompt:string;context:Record<string,unknown>}){return{text:`Travel planning guidance for: ${input.prompt}`,items:['Match preferences to destination climate','Prefer verified local hosts','Keep a flexible itinerary']}}}

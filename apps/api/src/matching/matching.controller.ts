@@ -1,0 +1,1 @@
+import{Controller,Get,Req}from'@nestjs/common';import{MatchingService}from'./matching.service';@Controller('matching')export class MatchingController{constructor(private s:MatchingService){}@Get('hosts')hosts(@Req()r:any){return this.s.hosts(r.user.id)}}

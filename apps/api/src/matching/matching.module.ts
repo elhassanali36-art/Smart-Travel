@@ -1,0 +1,1 @@
+import{CommonModule}from'../common/common.module';import{Module}from'@nestjs/common';import{MatchingController}from'./matching.controller';import{MatchingService}from'./matching.service';@Module({imports:[CommonModule],controllers:[MatchingController],providers:[MatchingService]})export class MatchingModule{}

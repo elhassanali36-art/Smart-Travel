@@ -1,0 +1,1 @@
+import{CommonModule}from'../common/common.module';import{Module}from'@nestjs/common';import{TripsController}from'./trips.controller';import{TripsService}from'./trips.service';@Module({imports:[CommonModule],controllers:[TripsController],providers:[TripsService]})export class TripsModule{}

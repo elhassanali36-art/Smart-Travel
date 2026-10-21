@@ -1,0 +1,45 @@
+{
+  "name": "@smart-travel/api",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "jest --runInBand",
+    "check:pure": "node --experimental-strip-types --no-warnings ../../scripts/mini-jest.mjs src/common/config-rules.spec.ts src/common/rate-limiter.spec.ts src/common/cookies.spec.ts src/common/security-headers.spec.ts src/auth/password.spec.ts src/bookings/booking-rules.spec.ts src/bookings/booking-capacity.spec.ts src/matching/score.spec.ts src/profiles/completion.spec.ts src/common/prisma-errors.spec.ts",
+    "check:offline": "node ../../scripts/offline/offline-runner.cjs src/auth/auth.service.spec.ts src/bookings/bookings.service.spec.ts src/profiles/profiles.service.spec.ts src/common/cookies.spec.ts src/common/security-headers.spec.ts src/auth/auth.controller.spec.ts src/reviews/reviews.service.spec.ts src/trips/trips.service.spec.ts src/messaging/messaging.service.spec.ts src/experiences/experiences.service.spec.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@prisma/client": "^6.16.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "jose": "^5.9.6",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/testing": "^11.1.6",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.5.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.9.2"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$"
+  },
+  "engines": {
+    "node": ">=20.12.0"
+  }
+}
